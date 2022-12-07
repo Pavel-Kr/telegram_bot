@@ -82,18 +82,33 @@ sendAnimation() {
 }
 
 test(){
-  updates=$($CURL -s https://api.telegram.org/bot$apiToken/getUpdates)
-  echo $updates
-  success=$(echo $updates | awk -F, '{print $1}' | awk -F: '{print $2}')
-  echo $success
-  if [[ $success == "true" ]]
-  then
-    result=$(echo $updates | grep -o "\[.*\]\}$")
-    records_count=$(echo $result | awk -F"},{" '{print NF}')
-    echo $records_count
-  else
-    echo "False"
-  fi
+  offset=0
+  while :
+  do
+    updates=$($CURL -s https://api.telegram.org/bot$apiToken/getUpdates -d "offset=$offset")
+    success=$(echo $updates | awk -F, '{print $1}' | awk -F: '{print $2}')
+    if [[ $success == "true" ]]
+    then
+      result=$(echo $updates | grep -o "\[.*\]\}$" | awk -F"},{" '{print $1}')
+      if [[ $result == "[]}" ]]
+      then
+        continue
+      else
+        update_id=$(echo $result | grep -o "\"update_id\":[0-9]*" | awk -F: '{print $2}')
+        userChatId=$(echo $result | grep -o "\"chat\":{\"id\":[0-9]*" | awk -F: '{print $3}')
+        text=$(echo $result | grep -o "\"text\":\"[^\"]*\"" | awk -F: '{print $2}' | awk -F\" '{print $2}')
+        if [[ $text == "/panoramic" ]];
+        then
+          sendMessage "Make photo"
+          sleep 2
+        else
+          sleep 2
+          #sendMessage "Hello"
+        fi
+        offset=$(($update_id + 1))
+      fi
+    fi
+  done
 }
 
 [ "$what" == "m" ] && sendMessage $data
